@@ -28,15 +28,18 @@ function formatAndSendTweet(event) {
   return tweet.tweet(tweetText);
 }
 
-const isNamecoin2011 = (data) => {
-  const traits = _.get(data, ['traits'])
-  const year = traits.find(obj => { return obj.trait_type === 'Year' })?.value
-  // there are multiple NMC trait types
-  const nmc = traits.filter(obj => { return obj.trait_type === 'NMC' })
-  const coin = (nmc && nmc.find(obj => { return obj.value === 'Namecoin' })) ? true : false
+// Noticed that some are appearing as "Empty Vault" in OS
+// making this check unhelpful for now.
 
-  return (year && nmc) ? true : false;
-}
+// const isNamecoin2011 = (data) => {
+//   const traits = _.get(data, ['traits'])
+//   const year = traits.find(obj => { return obj.trait_type === 'Year' })?.value
+//   // there are multiple NMC trait types
+//   const nmc = traits.filter(obj => { return obj.trait_type === 'NMC' })
+//   const coin = (nmc && nmc.find(obj => { return obj.value === 'Namecoin' })) ? true : false
+
+//   return (year && nmc) ? true : false;
+// }
 
 const eventsQuery = async(lastSaleTime) => {
   return await axios.get('https://api.opensea.io/api/v1/events', {
@@ -52,13 +55,15 @@ const eventsQuery = async(lastSaleTime) => {
   });
 };
 
-const assetQuery = async(tokenId, address) => {
-  return await axios.get(`https://api.opensea.io/api/v1/asset/${address}/${tokenId}`, {
-    headers: {
-      'X-API-KEY': process.env.X_API_KEY
-    },
-  });
-};
+// Not using for now
+
+// const assetQuery = async(tokenId, address) => {
+//   return await axios.get(`https://api.opensea.io/api/v1/asset/${address}/${tokenId}`, {
+//     headers: {
+//       'X-API-KEY': process.env.X_API_KEY
+//     },
+//   });
+// };
 
 
 // Poll OpenSea every 5 minutes & retrieve all sales for a given collection in either the time since the last sale OR in the last minute
@@ -79,21 +84,15 @@ setInterval(() => {
     console.log(`${events.length} sales since the last one...`);
 
     _.each(sortedEvents, (event) => {
-      const tokenId = _.get(event, ['asset', 'token_id']);
+      // const tokenId = _.get(event, ['asset', 'token_id']);
+      // const address = _.get(event, ['asset', 'asset_contract', 'address']);
       const name = _.get(event, ['asset', 'name']);
-      const address = _.get(event, ['asset', 'asset_contract', 'address']);
 
-      if (name.match('2011') || name.match('Namecoin')) {
-        assetQuery(tokenId, address).then((resp) => {
-          if (isNamecoin2011(_.get(resp, ['data']))) {
-            const created = _.get(event, 'created_date');
-            cache.set('lastSaleTime', moment(created).unix());
+      if (name.match('2011') && name.match('Namecoin')) {
+        const created = _.get(event, 'created_date');
+        cache.set('lastSaleTime', moment(created).unix());
 
-            return formatAndSendTweet(event);
-          }
-        }).catch((error) => {
-          console.error(error);
-        });
+        return formatAndSendTweet(event);
       }
     });
   }).catch((error) => {
