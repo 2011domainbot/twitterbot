@@ -30,9 +30,10 @@ function formatAndSendTweet(event) {
 
 const isNamecoin2011 = (data) => {
   const traits = _.get(data, ['traits'])
-
-  const year = traits.find(obj => { return obj.trait_type === 'Year' })?.value === '2011';
-  const nmc = traits.find(obj => { return obj.trait_type === 'NMC' })?.value === 'Namecoin';
+  const year = traits.find(obj => { return obj.trait_type === 'Year' })?.value
+  // there are multiple NMC trait types
+  const nmc = traits.filter(obj => { return obj.trait_type === 'NMC' })
+  const coin = (nmc && nmc.find(obj => { return obj.value === 'Namecoin' })) ? true : false
 
   return (year && nmc) ? true : false;
 }
@@ -59,9 +60,10 @@ const assetQuery = async(tokenId, address) => {
   });
 };
 
+
 // Poll OpenSea every 5 minutes & retrieve all sales for a given collection in either the time since the last sale OR in the last minute
 setInterval(() => {
-  const lastSaleTime = cache.get('lastSaleTime', null) || moment().startOf('minute').subtract(300, "seconds").unix();
+  const lastSaleTime = cache.get('lastSaleTime', null) || moment().startOf('minute').subtract(59, "seconds").unix();
 
   console.log(`Last sale (in seconds since Unix epoch): ${cache.get('lastSaleTime', null)}`);
 
@@ -78,20 +80,23 @@ setInterval(() => {
 
     _.each(sortedEvents, (event) => {
       const tokenId = _.get(event, ['asset', 'token_id']);
+      const name = _.get(event, ['asset', 'name']);
       const address = _.get(event, ['asset', 'asset_contract', 'address']);
 
-      assetQuery(tokenId, address).then((resp) => {
-        if (isNamecoin2011(_.get(resp, ['data']))) {
-          const created = _.get(event, 'created_date');
-          cache.set('lastSaleTime', moment(created).unix());
+      if (name.match('2011') || name.match('Namecoin')) {
+        assetQuery(tokenId, address).then((resp) => {
+          if (isNamecoin2011(_.get(resp, ['data']))) {
+            const created = _.get(event, 'created_date');
+            cache.set('lastSaleTime', moment(created).unix());
 
-          return formatAndSendTweet(event);
-        }
-      }).catch((error) => {
-        console.error(error);
-      });
+            return formatAndSendTweet(event);
+          }
+        }).catch((error) => {
+          console.error(error);
+        });
+      }
     });
   }).catch((error) => {
     console.error(error);
   });
-}, 300000);
+}, 60000);
