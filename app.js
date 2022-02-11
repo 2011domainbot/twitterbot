@@ -87,11 +87,10 @@ setInterval(() => {
       // const tokenId = _.get(event, ['asset', 'token_id']);
       // const address = _.get(event, ['asset', 'asset_contract', 'address']);
       const name = _.get(event, ['asset', 'name']);
+      const created = _.get(event, 'created_date');
       cache.set('lastSaleTime', moment(created).unix());
 
       if (name.match('2011') && name.match('Namecoin')) {
-        const created = _.get(event, 'created_date');
-
         return formatAndSendTweet(event);
       }
     });
